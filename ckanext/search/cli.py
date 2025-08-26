@@ -37,9 +37,7 @@ def clear(force):
 
 
 @search.command()
-@click.option(
-    "-p", "--provider", help="Search provider to initialize (e.g. solr)"
-)
+@click.option("-p", "--provider", help="Search provider to initialize (e.g. solr)")
 def init(provider):
     init_schema(provider_id=provider)
 

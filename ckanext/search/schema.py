@@ -96,6 +96,7 @@ def get_search_schema(entity_type: Optional[str] = None) -> SearchSchema:
 def init_schema(provider_id: str | None = None):
 
     from ckanext.search.index import _get_indexing_plugins
+
     # TODO: combine different entities, schemas provided by extensions
 
     # TODO: validate with navl

@@ -60,6 +60,7 @@ class FilterOp(NamedTuple):
             f"FilterOp(field={repr(self.field)}, op={repr(self.op)}, value={value_str})"
         )
 
+
 class FiltersParser:
 
     search_schema: dict = {}
@@ -229,9 +230,7 @@ class FiltersParser:
                         )
                 else:
                     # Handle field key
-                    field_op = self._process_field_operator(
-                        key, item[key]
-                    )
+                    field_op = self._process_field_operator(key, item[key])
 
                     if field_op:
                         child_ops.append(field_op)
@@ -278,9 +277,7 @@ class FiltersParser:
                 # Combine dict filters with $and
                 child_ops = []
                 for k, v in value.items():
-                    field_op = self._process_field_operator(
-                        field_name, {k: v}
-                    )
+                    field_op = self._process_field_operator(field_name, {k: v})
                     if field_op:
                         child_ops.append(field_op)
 
@@ -293,9 +290,7 @@ class FiltersParser:
             else:
                 # Just return the filter
                 op = list(value.keys())[0]
-                return self._check_field_operator(
-                    field_name, op, value[op]
-                )
+                return self._check_field_operator(field_name, op, value[op])
 
         elif isinstance(value, list):
             # TODO: fail if lists
@@ -309,9 +304,7 @@ class FiltersParser:
             members = []
 
             for field_op in field_ops:
-                field_op = self._process_field_operator(
-                    field_name, field_op
-                )
+                field_op = self._process_field_operator(field_name, field_op)
                 if field_op:
                     members.append(field_op)
 

@@ -145,7 +145,11 @@ class ElasticSearchProvider(SingletonPlugin):
             # TODO allow to choose validated/not validated? i.e use_default_schema
             items.append(json.loads(doc["validated_data_dict"]))
 
-        return {"count": es_response["hits"]["total"]["value"], "results": items, "facets": {}}
+        return {
+            "count": es_response["hits"]["total"]["value"],
+            "results": items,
+            "facets": {},
+        }
 
     def _filterop_to_es_query(
         self, filter_op: FilterOp, search_schema: SearchSchema
