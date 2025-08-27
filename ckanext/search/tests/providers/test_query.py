@@ -31,7 +31,7 @@ def test_search_dataset_combined_field(field_name, field_value):
 
     dataset = factories.IndexedDataset(**{field_name: field_value})
 
-    result = search(q="walrus")
+    result = search(entity_type="dataset", q="walrus")
 
     assert result["count"] == 1
     assert result["results"][0]["id"] == dataset["id"]
@@ -55,7 +55,7 @@ def test_search_organization_combined_field(field_name, field_value):
 
     organization = factories.IndexedOrganization(**{field_name: field_value})
 
-    result = search(q="walrus")
+    result = search(entity_type="organization", q="walrus")
 
     assert result["count"] == 1
     assert result["results"][0]["id"] == organization["id"]

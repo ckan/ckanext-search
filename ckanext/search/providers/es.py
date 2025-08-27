@@ -104,6 +104,7 @@ class ElasticSearchProvider(SingletonPlugin):
 
     def search_query(
         self,
+        entity_type: str,
         q: str,
         filters: FilterOp,
         sort: list[list[str]],
@@ -119,6 +120,10 @@ class ElasticSearchProvider(SingletonPlugin):
 
         es_params = {"size": limit, "from": start}
 
+        # TODO: If we switch to one index per entity this won't be necessary
+        # (we'll just pass the relevant `index` param to client.search())
+        entity_type_dsl = {"term": {"entity_type": entity_type}}
+
         # Translate q param to ES Query DSL
         if q and q in ("*", "*:*"):
             q_dsl = {"match_all": {}}
@@ -131,13 +136,15 @@ class ElasticSearchProvider(SingletonPlugin):
         filters_dsl = self._filterop_to_es_query(filters, search_schema)
 
         if q_dsl and filters_dsl:
-            es_params["query"] = {"bool": {"must": [q_dsl, filters_dsl]}}
+            es_params["query"] = {
+                "bool": {"must": [entity_type_dsl, q_dsl, filters_dsl]}
+            }
         elif q_dsl:
-            es_params["query"] = q_dsl
+            es_params["query"] = {"bool": {"must": [entity_type_dsl, q_dsl]}}
         elif filters_dsl:
-            es_params["query"] = filters_dsl
+            es_params["query"] = {"bool": {"must": [entity_type_dsl, filters_dsl]}}
         else:
-            es_params["query"] = {"match_all": {}}
+            es_params["query"] = entity_type_dsl
 
         client = self.get_client()
 

@@ -29,6 +29,7 @@ class ISearchProvider(Interface):
 
     def search_query(
         self,
+        entity_type: str,
         q: str,  # e.g. 'water data'
         # e.g. FilterOp(field=None, op="$and", value=[
         #   FilterOp(field="metadata_modified", op="lt", value="2024-01-01"),

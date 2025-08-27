@@ -318,6 +318,7 @@ class SolrSearchProvider(SingletonPlugin):
 
     def search_query(
         self,
+        entity_type: str,
         q: str,
         filters: FilterOp,
         sort: list[list[str]],
@@ -349,6 +350,9 @@ class SolrSearchProvider(SingletonPlugin):
         }
 
         solr_params["fq"] = self._filterop_to_solr_fq(filters, search_schema)
+        # TODO: If we switch to one core per entity this won't be necessary
+        # (we'll just search the relevant core in client.search())
+        solr_params["fq"].append(f"entity_type:{entity_type}")
 
         # TODO: perm labels for arbitrary entities
 
