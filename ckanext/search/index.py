@@ -106,7 +106,7 @@ def index_organization_dict(org_dict: ActionResult.OrganizationShow) -> None:
 
 def _index_record(entity_type: str, id_: str, search_data: dict) -> None:
 
-    search_schema = get_search_schema()
+    search_schema = get_search_schema(entity_type)
 
     for provider_plugin in PluginImplementations(ISearchProvider):
         if provider_plugin.id in _get_indexing_providers():

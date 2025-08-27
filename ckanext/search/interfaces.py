@@ -54,7 +54,7 @@ class ISearchProvider(Interface):
 
     # TODO: what is clear used for?
     def initialize_search_provider(
-        self, combined_schema: SearchSchema, clear: bool
+        self, search_schemas: dict[str, SearchSchema], clear: bool
     ) -> None:
         """create or update indexes for fields based on combined search
         schema containing all field names, types and repeating state"""
