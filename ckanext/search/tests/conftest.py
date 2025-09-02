@@ -16,7 +16,7 @@ def clean_search_index():
 
 class MockSearchFeature:
 
-    def before_query(self, query_dict):
+    def before_query(self, query_dict, context):
         pass
 
     def after_query(self, query_results, query_dict):

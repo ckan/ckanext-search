@@ -1,6 +1,5 @@
 # This will eventually live in ckan/logic/action/get.py
 
-import ckan.authz as authz
 from ckan.lib.plugins import get_permission_labels
 from ckan.plugins import PluginImplementations
 from ckan.plugins.toolkit import (
@@ -15,19 +14,6 @@ from ckanext.search.interfaces import ISearchProvider, ISearchFeature
 from ckanext.search.schema import get_search_schema
 from ckanext.search.logic.schema import default_search_query_schema
 from ckanext.search.filters import FilterOp
-
-
-def _get_permission_labels(context: Context) -> list[str] | None:
-
-    user = context.get("user")
-    if context.get("ignore_auth") or (user and authz.is_sysadmin(user)):
-        labels = None
-    else:
-        labels = get_permission_labels().get_user_dataset_labels(
-            context["auth_user_obj"]
-        )
-
-    return labels
 
 
 @side_effect_free
@@ -80,31 +66,10 @@ def search(context: Context, data_dict: DataDict):
 
     # Allow search extensions to modify the query params
     for plugin in PluginImplementations(ISearchFeature):
-        plugin.before_query(query_dict)
+        plugin.before_query(query_dict, context)
 
     # This is valid and a search schema exists for it
     entity_type = query_dict["entity_type"]
-
-    # Permission labels
-    # TODO: where to put this?
-    if entity_type == "dataset":
-        if labels := _get_permission_labels(context):
-            perm_labels_filter_op = FilterOp(
-                field="permission_labels", op="in", value=labels
-            )
-
-            if filter_op := query_dict["filters"]:
-                if filter_op.op == "$and":
-                    # Add the filter to the existing AND filters
-                    filter_op.value.append(perm_labels_filter_op)
-                else:
-                    # Wrap existing filters and the perms one in an AND operation
-                    query_dict["filters"] = FilterOp(
-                        field=None, op="$and", value=[filter_op, perm_labels_filter_op]
-                    )
-                pass
-            else:
-                query_dict["filters"] = perm_labels_filter_op
 
     search_schema = get_search_schema(entity_type)
     query_dict["search_schema"] = search_schema

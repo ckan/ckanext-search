@@ -18,6 +18,10 @@ def search():
 @click.argument("entity_type", required=False)
 def rebuild(entity_type: str):
 
+    # TODO: hook ISearchEntity here!
+    # TODO: wrap in actions
+
+
     if entity_type == "dataset":
         rebuild_dataset_index()
     elif entity_type == "organization":

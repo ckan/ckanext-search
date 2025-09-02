@@ -6,7 +6,7 @@ from geomet import wkt
 
 from ckan.plugins import SingletonPlugin, implements
 from ckan.plugins.toolkit import Invalid, get_validator, config
-from ckan.types import Schema
+from ckan.types import Schema, Context
 from ckanext.search.interfaces import ISearchFeature, SearchSchema
 
 from ckanext.search.providers.solr import SolrSchema
@@ -159,7 +159,7 @@ class SpatialSearch(SingletonPlugin):
 
         return search_query_schema
 
-    def before_query(self, query_params: dict[str, Any]) -> dict[str, Any]:
+    def before_query(self, query_params: dict[str, Any], context: Context) -> dict[str, Any]:
 
         if bbox := query_params["additional_params"].get("bbox"):
 
