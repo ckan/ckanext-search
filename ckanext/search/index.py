@@ -43,49 +43,22 @@ def _get_indexing_plugins() -> Iterator[SingletonPlugin]:
             yield plugin
 
 
-def index_dataset(id_: str) -> None:
+def _get_entity_plugins(entity_type: Optional[str] = None):
 
-    context = {
-        "ignore_auth": True,
-        "use_cache": False,
-        # "for_indexing": True,  # TODO: implement support in core?
-    }
+    # TODO: make core entities extendable but not registered,
+    # similar to DefaultDatasetForm
 
-    # Request the validated dataset
-    dataset_dict = get_action("package_show")(context, {"id": id_})
+    entity_plugins = [DatasetSearchIndex()] + [
+        p for p in PluginImplementations(ISearchEntity)
+    ]
+    if entity_type:
+        entity_plugin = [p for p in entity_plugins if p.entity_type() == entity_type]
+        if not entity_plugin:
+            raise ValueError(f"Unknown search entity type: {entity_type}")
 
-    return index_dataset_dict(dataset_dict)
+        return entity_plugin
 
-
-def index_dataset_dict(dataset_dict: ActionResult.PackageShow) -> None:
-
-    # TODO: choose what to index here?
-    search_data = {}
-
-    # For now let's remove everything not explicitly added to the search schema
-    schema = get_search_schema("dataset")
-    for key, value in dataset_dict.items():
-
-        # TODO: handle organization, resource fields, etc
-        if key in schema.get("fields", []):
-            search_data[key] = value
-
-    search_data["tags"] = [t["name"] for t in search_data.get("tags", [])]
-
-    # Add search-specific fields
-
-    search_data["entity_type"] = "dataset"
-
-    search_data["validated_data_dict"] = json.dumps(search_data, cls=MissingNullEncoder)
-
-    # permission labels determine visibility in search, can't be set
-    # in original dataset or before_dataset_index plugins
-    id_ = dataset_dict["id"]
-    search_data["permission_labels"] = get_permission_labels().get_dataset_labels(
-        model.Package.get(dataset_dict["id"])
-    )
-
-    return search_data
+    return entity_plugins
 
 
 def index_organization(id_: str) -> None:
@@ -143,22 +116,14 @@ def _index_record(entity_type: str, id_: str, search_data: dict) -> None:
             log.debug(f"Indexed document of type '{entity_type}' with id '{id_}'")
 
 
-def rebuild_dataset_index() -> None:
+def rebuild_index(entity_type: Optional[str] = None) -> None:
 
-    dataset_ids = [
-        r[0]
-        for r in model.Session.query(model.Package.id)
-        .filter(
-            model.Package.state != "deleted"
-        )  # TODO: more filters (state, type, etc)?
-        .all()
-    ]
-    t1 = time.time()
-    for id_ in dataset_ids:
-        index_dataset(id_)
+    entity_plugins = _get_entity_plugins(entity_type)
 
-    t2 = time.time()
-    log.debug(f"Done in {t2 -t1:.2f} seconds")
+    for plugin in entity_plugins:
+        log.debug(f"Indexing entities of type: {entity_type}")
+        for record in plugin.fetch_records(entity_type):
+            _index_record(plugin.entity_type(), record["id"], record)
 
 
 def rebuild_organization_index() -> None:
@@ -370,7 +335,7 @@ class DatasetSearchIndex(SingletonPlugin):
         # Request the validated dataset
         dataset_dict = get_action("package_show")(context, {"id": id_})
 
-        return index_dataset_dict(dataset_dict)
+        return dataset_dict
 
     def _transform_search_data(
         self, dataset_dict: ActionResult.PackageShow

@@ -32,6 +32,12 @@ def search(context: Context, data_dict: DataDict):
     for plugin in PluginImplementations(ISearchFeature):
         additional_params_schema.update(plugin.search_query_schema())
 
+    # Allow search entity to add custom params
+    # TODO: what about core plugins
+    for plugin in PluginImplementations(ISearchEntity):
+        additional_params_schema.update(plugin.search_query_schema())
+
+
     # Any fields not in the default schema are moved to additional_params
     default_query_fields = schema.keys()
 
