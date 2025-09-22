@@ -16,6 +16,7 @@ DEFAULT_DATASET_SEARCH_SCHEMA: SearchSchema = {
         "groups": {"type": "string", "multiple": True},
         "owner_org": {"type": "string"},
         "private": {"type": "bool"},
+        "state": {"type": "string"},
         "metadata_created": {"type": "date"},
         "metadata_modified": {"type": "date"},
         "permission_labels": {"type": "string", "multiple": True},

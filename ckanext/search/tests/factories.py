@@ -1,8 +1,11 @@
+import json
+
 from ckan import model
+from ckan.lib.navl.dictization_functions import MissingNullEncoder
 
 from ckan.tests import factories as core_factories
 
-from ckanext.search import index
+from ckanext.search.index import rebuild_index
 
 
 class CKANIndexedOnlyFactory(core_factories.CKANFactory):
@@ -23,8 +26,8 @@ class CKANIndexedOnlyFactory(core_factories.CKANFactory):
     def _api_postprocess_result(cls, result):
         """Modify result before returning it to the consumer."""
 
-        if cls.indexer:
-            cls.indexer(result)
+        if cls.entity_type:
+            rebuild_index(cls.entity_type, ids=[result["id"]])
 
         model.Session.rollback()
 
@@ -33,9 +36,9 @@ class CKANIndexedOnlyFactory(core_factories.CKANFactory):
 
 class IndexedDataset(core_factories.Dataset, CKANIndexedOnlyFactory):
 
-    indexer = index.index_dataset_dict
+    entity_type = "dataset"
 
 
 class IndexedOrganization(core_factories.Organization, CKANIndexedOnlyFactory):
 
-    indexer = index.index_organization_dict
+    entity_type = "organization"

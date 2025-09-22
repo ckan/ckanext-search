@@ -5,15 +5,17 @@ from ckan.plugins import PluginImplementations
 from ckan.plugins.toolkit import (
     check_access,
     config,
+    get_or_bust,
     side_effect_free,
     navl_validate,
     ValidationError,
 )
 from ckan.types import Context, DataDict
-from ckanext.search.interfaces import ISearchProvider, ISearchFeature
+from ckanext.search.interfaces import ISearchProvider, ISearchFeature, ISearchEntity
 from ckanext.search.schema import get_search_schema
 from ckanext.search.logic.schema import default_search_query_schema
 from ckanext.search.filters import FilterOp
+from ckanext.search.index import _get_entity_plugins
 
 
 @side_effect_free
@@ -22,6 +24,8 @@ def search(context: Context, data_dict: DataDict):
     check_access("search", context, data_dict)
 
     schema = default_search_query_schema()
+
+    entity_type = get_or_bust(data_dict, "entity_type")
 
     additional_params_schema = {}
     # Allow search providers to add custom params
@@ -32,11 +36,10 @@ def search(context: Context, data_dict: DataDict):
     for plugin in PluginImplementations(ISearchFeature):
         additional_params_schema.update(plugin.search_query_schema())
 
-    # Allow search entity to add custom params
-    # TODO: what about core plugins
-    for plugin in PluginImplementations(ISearchEntity):
-        additional_params_schema.update(plugin.search_query_schema())
-
+    # Allow search entities to add custom params
+    for plugin in _get_entity_plugins():
+        if plugin.entity_type() == entity_type:
+            additional_params_schema.update(plugin.search_query_schema())
 
     # Any fields not in the default schema are moved to additional_params
     default_query_fields = schema.keys()
@@ -73,6 +76,11 @@ def search(context: Context, data_dict: DataDict):
     # Allow search extensions to modify the query params
     for plugin in PluginImplementations(ISearchFeature):
         plugin.before_query(query_dict, context)
+
+    # Allow search entities to modify the query params
+    for plugin in _get_entity_plugins():
+        if plugin.entity_type() == entity_type:
+            plugin.before_query(query_dict, context)
 
     # This is valid and a search schema exists for it
     entity_type = query_dict["entity_type"]

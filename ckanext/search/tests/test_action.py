@@ -30,7 +30,13 @@ def test_standard_params(mock_search_plugins):
     assert query_params["start"] == 10
     assert query_params["sort"] == ["title asc"]
     assert query_params["filters"] == FilterOp(
-        field="entity_type", op="eq", value="dataset"
+        field=None,
+        op="$and",
+        value=[
+            FilterOp(field="entity_type", op="eq", value="dataset"),
+            FilterOp(field="private", op="eq", value=False),
+            FilterOp(field="state", op="in", value=["active"]),
+        ],
     )
 
 
@@ -51,7 +57,13 @@ def test_standard_params_are_converted(mock_search_plugins):
     assert query_params["start"] == 10
     assert query_params["sort"] == ["title asc"]
     assert query_params["filters"] == FilterOp(
-        field="entity_type", op="eq", value="dataset"
+        field=None,
+        op="$and",
+        value=[
+            FilterOp(field="entity_type", op="eq", value="dataset"),
+            FilterOp(field="private", op="eq", value=False),
+            FilterOp(field="state", op="in", value=["active"]),
+        ],
     )
 
 

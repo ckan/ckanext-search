@@ -1,3 +1,4 @@
+from typing import Optional
 import click
 
 from ckanext.search.index import (
@@ -14,13 +15,20 @@ def search():
 
 
 @search.command()
+@click.option(
+    "-i",
+    "--id",
+    "ids",
+    multiple=True,
+    help="Id of specific entity to index (can be provided multiple times)",
+)
 @click.argument("entity_type", required=False)
-def rebuild(entity_type: str):
+def rebuild(entity_type: str, ids: Optional[list] = None):
 
     # TODO: hook ISearchEntity here!
     # TODO: wrap in actions
 
-    rebuild_index(entity_type)
+    rebuild_index(entity_type, ids)
 
 
 @search.command()
