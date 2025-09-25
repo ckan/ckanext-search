@@ -16,6 +16,7 @@ pytestmark = [
 def test_standard_params(mock_search_plugins):
     helpers.call_action(
         "search",
+        entity_type="dataset",
         q="cats",
         limit=10,
         start=10,
@@ -29,13 +30,20 @@ def test_standard_params(mock_search_plugins):
     assert query_params["start"] == 10
     assert query_params["sort"] == ["title asc"]
     assert query_params["filters"] == FilterOp(
-        field="entity_type", op="eq", value="dataset"
+        field=None,
+        op="$and",
+        value=[
+            FilterOp(field="entity_type", op="eq", value="dataset"),
+            FilterOp(field="private", op="eq", value=False),
+            FilterOp(field="state", op="in", value=["active"]),
+        ],
     )
 
 
 def test_standard_params_are_converted(mock_search_plugins):
     helpers.call_action(
         "search",
+        entity_type="dataset",
         q="cats",
         limit="10",
         start="10",
@@ -49,7 +57,13 @@ def test_standard_params_are_converted(mock_search_plugins):
     assert query_params["start"] == 10
     assert query_params["sort"] == ["title asc"]
     assert query_params["filters"] == FilterOp(
-        field="entity_type", op="eq", value="dataset"
+        field=None,
+        op="$and",
+        value=[
+            FilterOp(field="entity_type", op="eq", value="dataset"),
+            FilterOp(field="private", op="eq", value=False),
+            FilterOp(field="state", op="in", value=["active"]),
+        ],
     )
 
 
@@ -58,6 +72,7 @@ def test_standard_params_are_validated(mock_search_plugins):
     with pytest.raises(toolkit.ValidationError) as exc_info:
         helpers.call_action(
             "search",
+            entity_type="dataset",
             q="cats",
             limit="a",
             start="b",
@@ -78,6 +93,7 @@ def test_standard_params_are_validated(mock_search_plugins):
 def test_provider_params(mock_search_plugins):
     helpers.call_action(
         "search",
+        entity_type="dataset",
         q="cats",
         df="title",
         qf="title^4.0 description^2.0",
@@ -92,6 +108,7 @@ def test_provider_params(mock_search_plugins):
 def test_feature_params(mock_search_plugins):
     helpers.call_action(
         "search",
+        entity_type="dataset",
         q="cats",
         custom_param="hi",
     )
@@ -106,6 +123,7 @@ def test_unknown_params_fail(mock_search_plugins):
     with pytest.raises(toolkit.ValidationError) as exc_info:
         helpers.call_action(
             "search",
+            entity_type="dataset",
             q="cats",
             not_="a",
             known="b",

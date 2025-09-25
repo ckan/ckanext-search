@@ -1,8 +1,8 @@
+from typing import Optional
 import click
 
 from ckanext.search.index import (
-    rebuild_dataset_index,
-    rebuild_organization_index,
+    rebuild_index,
     clear_index,
 )
 from ckanext.search.schema import init_schema
@@ -15,17 +15,20 @@ def search():
 
 
 @search.command()
+@click.option(
+    "-i",
+    "--id",
+    "ids",
+    multiple=True,
+    help="Id of specific entity to index (can be provided multiple times)",
+)
 @click.argument("entity_type", required=False)
-def rebuild(entity_type: str):
+def rebuild(entity_type: str, ids: Optional[list] = None):
 
-    if entity_type == "dataset":
-        rebuild_dataset_index()
-    elif entity_type == "organization":
-        rebuild_organization_index()
-    elif entity_type is None:
+    # TODO: hook ISearchEntity here!
+    # TODO: wrap in actions
 
-        rebuild_organization_index()
-        rebuild_dataset_index()
+    rebuild_index(entity_type, ids)
 
 
 @search.command()

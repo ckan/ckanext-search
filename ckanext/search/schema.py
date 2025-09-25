@@ -1,36 +1,5 @@
-from typing import Optional
 from ckan.plugins import PluginImplementations
 from ckanext.search.interfaces import SearchSchema, ISearchProvider, ISearchFeature
-
-
-def merge_search_schemas(schemas: list[SearchSchema]) -> SearchSchema:
-    """
-    Merge multiple search schemas into one, ensuring fields with the same name
-    have identical properties.
-
-    Raises ValueError if conflicting field definitions are found.
-    """
-    if not schemas:
-        return {"version": 1, "fields": {}}
-
-    # Use the version from the first schema
-    result: SearchSchema = {"version": schemas[0].get("version", 1), "fields": {}}
-
-    for schema in schemas:
-        for field_name, field_props in schema.get("fields", {}).items():
-            if field_name in result["fields"]:
-                # Check if the new field definition matches the existing one
-                existing_props = result["fields"][field_name]
-
-                if field_props != existing_props:
-                    raise ValueError(
-                        f"Conflicting definitions for field '{field_name}': "
-                        f"{existing_props} vs {field_props}"
-                    )
-            else:
-                result["fields"][field_name] = field_props
-
-    return result
 
 
 DEFAULT_DATASET_SEARCH_SCHEMA: SearchSchema = {
@@ -47,6 +16,7 @@ DEFAULT_DATASET_SEARCH_SCHEMA: SearchSchema = {
         "groups": {"type": "string", "multiple": True},
         "owner_org": {"type": "string"},
         "private": {"type": "bool"},
+        "state": {"type": "string"},
         "metadata_created": {"type": "date"},
         "metadata_modified": {"type": "date"},
         "permission_labels": {"type": "string", "multiple": True},
@@ -77,20 +47,41 @@ DEFAULT_ORGANIZATION_SEARCH_SCHEMA: SearchSchema = {
 }
 
 
-def get_search_schema(entity_type: Optional[str] = None) -> SearchSchema:
-    search_schemas = [
-        DEFAULT_DATASET_SEARCH_SCHEMA,
-        DEFAULT_ORGANIZATION_SEARCH_SCHEMA,
-    ]
+_search_schemas: dict[str, SearchSchema] = {}
+
+
+def reset_search_schemas() -> None:
+
+    global _search_schemas
+
+    _search_schemas = {}
+
+
+def register_search_schema(name: str, schema: SearchSchema) -> None:
+
+    global _search_schemas
+
+    _search_schemas[name] = schema
+
+
+def get_search_schema(entity_type: str) -> SearchSchema:
+
+    global _search_schemas
 
     # TODO: return custom entities
     # TODO: include fields from ISearchFeature plugins (per entity?)
-    if entity_type == "dataset":
-        return DEFAULT_DATASET_SEARCH_SCHEMA
-    elif entity_type == "organization":
-        return DEFAULT_ORGANIZATION_SEARCH_SCHEMA
-    else:
-        return merge_search_schemas(search_schemas)
+    if entity_type not in _search_schemas:
+        # TODO: custom exception
+        raise ValueError(f"Unknown search entity type: {entity_type}")
+
+    return _search_schemas[entity_type]
+
+
+def get_search_schemas() -> dict[str, SearchSchema]:
+
+    global _search_schemas
+
+    return _search_schemas
 
 
 def init_schema(provider_id: str | None = None):
@@ -101,7 +92,7 @@ def init_schema(provider_id: str | None = None):
 
     # TODO: validate with navl
 
-    combined_search_schema = get_search_schema()
+    search_schemas = get_search_schemas()
 
     provider_ids = []
     # Search providers set things up first
@@ -118,11 +109,11 @@ def init_schema(provider_id: str | None = None):
         provider_ids = [p.id for p in plugins]
 
     for plugin in plugins:
-        plugin.initialize_search_provider(combined_search_schema, clear=False)
+        plugin.initialize_search_provider(search_schemas, clear=False)
 
     # Search feature plugins can add things later
     for plugin in PluginImplementations(ISearchFeature):
         if any(
             provider_id in plugin.supported_providers() for provider_id in provider_ids
         ):
-            plugin.initialize_search_provider(combined_search_schema, clear=False)
+            plugin.initialize_search_provider(search_schemas, clear=False)

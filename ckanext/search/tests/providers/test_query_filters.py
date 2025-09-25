@@ -140,7 +140,7 @@ def index_for_filters_tests():
 )
 def test_search_filters(filters, names):
 
-    result = search(q="*", filters=filters)
+    result = search(entity_type="dataset", q="*", filters=filters)
 
     assert result["count"] == len(names)
     if names:

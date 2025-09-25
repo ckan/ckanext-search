@@ -179,11 +179,15 @@ class SolrSearchProvider(SingletonPlugin):
     # ISearchProvider
 
     def initialize_search_provider(
-        self, search_schema: SearchSchema, clear: bool
+        self, search_schemas: dict[str, SearchSchema], clear: bool
     ) -> None:
 
         admin_client = self.get_admin_client()
-        # TODO: Should be create the ckan core here?
+
+        # TODO: For now we combine all fields in all schemas and create just one
+        # core. We probably want to create one core per entity to keep schemas
+        # separate, but then we need to consider cross-entity searches
+        combined_search_schema = merge_search_schemas(list(search_schemas.values()))
 
         if not admin_client.get_core():
             resp = admin_client.create_core()
@@ -215,7 +219,7 @@ class SolrSearchProvider(SingletonPlugin):
             "date": "pdate",
         }
 
-        for field_name, field in search_schema.get("fields", {}).items():
+        for field_name, field in combined_search_schema.get("fields", {}).items():
 
             field_type = field.pop("type")
             if admin_client.get_field(field_name):
@@ -314,6 +318,7 @@ class SolrSearchProvider(SingletonPlugin):
 
     def search_query(
         self,
+        entity_type: str,
         q: str,
         filters: FilterOp,
         sort: list[list[str]],
@@ -345,6 +350,9 @@ class SolrSearchProvider(SingletonPlugin):
         }
 
         solr_params["fq"] = self._filterop_to_solr_fq(filters, search_schema)
+        # TODO: If we switch to one core per entity this won't be necessary
+        # (we'll just search the relevant core in client.search())
+        solr_params["fq"].append(f"entity_type:{entity_type}")
 
         # TODO: perm labels for arbitrary entities
 
@@ -535,3 +543,33 @@ def solr_literal(t: str) -> str:
     and permission labels.
     """
     return '"' + t.replace('"', "") + '"'
+
+
+def merge_search_schemas(schemas: list[SearchSchema]) -> SearchSchema:
+    """
+    Merge multiple search schemas into one, ensuring fields with the same name
+    have identical properties.
+
+    Raises ValueError if conflicting field definitions are found.
+    """
+    if not schemas:
+        return {"version": 1, "fields": {}}
+
+    # Use the version from the first schema
+    result: SearchSchema = {"version": schemas[0].get("version", 1), "fields": {}}
+
+    for schema in schemas:
+        for field_name, field_props in schema.get("fields", {}).items():
+            if field_name in result["fields"]:
+                # Check if the new field definition matches the existing one
+                existing_props = result["fields"][field_name]
+
+                if field_props != existing_props:
+                    raise ValueError(
+                        f"Conflicting definitions for field '{field_name}': "
+                        f"{existing_props} vs {field_props}"
+                    )
+            else:
+                result["fields"][field_name] = field_props
+
+    return result

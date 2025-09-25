@@ -1,7 +1,7 @@
 # This will eventually live in CKAN core
 from typing import Any, Iterable, Optional, TypedDict
 
-from ckan.types import Schema
+from ckan.types import Schema, Context
 from ckan.plugins.interfaces import Interface
 
 from ckanext.search.filters import FilterOp
@@ -29,6 +29,7 @@ class ISearchProvider(Interface):
 
     def search_query(
         self,
+        entity_type: str,
         q: str,  # e.g. 'water data'
         # e.g. FilterOp(field=None, op="$and", value=[
         #   FilterOp(field="metadata_modified", op="lt", value="2024-01-01"),
@@ -54,7 +55,7 @@ class ISearchProvider(Interface):
 
     # TODO: what is clear used for?
     def initialize_search_provider(
-        self, combined_schema: SearchSchema, clear: bool
+        self, search_schemas: dict[str, SearchSchema], clear: bool
     ) -> None:
         """create or update indexes for fields based on combined search
         schema containing all field names, types and repeating state"""
@@ -117,27 +118,6 @@ class ISearchFeature(Interface):
 
         pass
 
-    def format_search_data(
-        self, entity_type: str, data: dict[str:Any]
-    ) -> dict[str, str | list[str]]:
-        """convert data for this entity type to search data suitable to be
-        passed to the search provider index method"""
-
-    def existing_record_ids(self, entity_type: str) -> Iterable[str]:
-        """return a list or iterable of all record ids for the given entity type
-        managed by this feature. Return an empty list for core entity
-        types like 'package' or entity types managed by another feature.
-        This method is used to identify missing and orphan records in the
-        search index"""
-
-    def fetch_records(
-        self, entity_type: str, records: Optional[Iterable[str]]
-    ) -> Iterable[dict[str, Any]]:
-        """generator of all records for this entity type managed by this
-        feature, or only records for the ids passed if not None.
-        This method is used to rebuild all or some records in the search
-        index"""
-
     # Querying
 
     def search_query_schema(self) -> Schema:
@@ -147,7 +127,7 @@ class ISearchFeature(Interface):
         """
         return {}
 
-    def before_query(self, query_params: dict[str, Any]) -> dict[str, Any]:
+    def before_query(self, query_params: dict[str, Any], context: Context) -> dict[str, Any]:
         """
         Called before sending the query to the search provider, allows to modify
         the sent query parameters.
@@ -164,3 +144,82 @@ class ISearchFeature(Interface):
         """
 
         return query_results
+
+
+class ISearchEntity(Interface):
+
+    def entity_type(self) -> str:
+        """Return a string id for the entity that this plugin handles
+        (e.g. 'dataset', 'organization', 'report', etc)"""
+        # TODO: Allow more than one?
+
+        # TODO: check that there's only one plugin per type at startup
+        return ""
+
+    def search_schema(self) -> SearchSchema:
+        """Return a full search schema for this particular entity type.
+
+        TODO: link to docs with a proper spec
+        Search schemas are defined as dicts with the following format:
+
+            {
+                "version": 1,
+                "fields": {
+                    <field_name>: {
+                        "type": <type>,
+                        "multiple": True/False,
+                        "indexed": True/False,
+                        "stored": True/False,
+                        ...
+                    },
+                    ...
+
+                    }
+                }
+
+            }
+
+        """
+        return {}
+
+    def search_query_schema(self) -> Schema:
+        """
+        Return a schema to validate custom query parameters. Can be used to add new
+        supported query parameters.
+        """
+        return {}
+
+    def before_query(self, query_params: dict[str, Any], context: Context) -> dict[str, Any]:
+        """
+        Called before sending the query to the search provider, allows to modify
+        the sent query parameters.
+        """
+
+        return query_params
+
+    def after_query(
+        self, query_results: dict[str, Any], query_params: dict[str, Any]
+    ) -> dict[str, Any]:
+        """
+        Called just before returning the search results. Besides the results from
+        the provider, it also receives the params used in the query.
+        """
+
+        return query_results
+
+    def existing_record_ids(self, entity_type: str) -> Iterable[str]:
+        """return a list or iterable of all record ids for the given entity type
+        managed by this feature.
+        This method is used to identify missing and orphan records in the
+        search index"""
+
+        return []
+
+    def fetch_records(
+        self, entity_type: str, ids: Optional[Iterable[str]]
+    ) -> Iterable[dict[str, Any]]:
+        """generator of all records for this entity type managed by this
+        feature, or only records for the ids passed if not None.
+        This method is used to rebuild all or some records in the search
+        index"""
+        return iter([])
